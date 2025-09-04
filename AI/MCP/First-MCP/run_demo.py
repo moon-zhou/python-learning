@@ -1,95 +1,75 @@
 #!/usr/bin/env python3
-"""
-MCP (Model Context Protocol) 演示运行脚本
 
-这个脚本提供了一种简单的方式来运行MCP服务器和客户端演示。
-"""
-
-import asyncio
 import subprocess
 import sys
-import time
 import os
 
-
-def install_dependencies():
-    """安装项目依赖"""
-    print("检查并安装项目依赖...")
+def run_server():
+    """运行MCP服务器"""
+    print("Starting MCP Server...")
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
-        print("依赖安装完成!")
-    except subprocess.CalledProcessError as e:
-        print(f"依赖安装失败: {e}")
-        sys.exit(1)
+        # 切换到当前目录
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+        
+        # 启动服务器
+        server_process = subprocess.Popen(
+            ["python3", "server.py"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        
+        print("MCP Server started successfully!")
+        print("Server PID:", server_process.pid)
+        return server_process
+    except Exception as e:
+        print(f"Failed to start server: {e}")
+        return None
 
-
-def start_server():
-    """启动MCP服务器"""
-    print("启动MCP服务器...")
-    server_process = subprocess.Popen([sys.executable, "mcp_server.py"], 
-                                    stdout=subprocess.PIPE, 
-                                    stderr=subprocess.PIPE,
-                                    text=True)
-    return server_process
-
-
-def start_client():
-    """启动MCP客户端"""
-    print("启动MCP客户端...")
-    client_process = subprocess.Popen([sys.executable, "mcp_client.py"],
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE,
-                                    text=True)
-    return client_process
-
-
-async def main():
-    """主函数"""
-    print("=== MCP (Model Context Protocol) 演示运行脚本 ===\n")
-    
-    # 安装依赖
-    install_dependencies()
-    
-    # 启动服务器
-    server_process = start_server()
-    print("服务器已启动，等待几秒钟...")
-    time.sleep(3)  # 给服务器一些启动时间
-    
-    # 检查服务器是否仍在运行
-    if server_process.poll() is not None:
-        print("服务器启动失败!")
-        stdout, stderr = server_process.communicate()
-        print("服务器输出:")
-        print(stdout)
-        print("服务器错误:")
-        print(stderr)
-        return
-    
-    print("服务器运行正常\n")
-    
-    # 启动客户端
-    client_process = start_client()
-    
-    # 等待客户端完成
-    stdout, stderr = client_process.communicate()
-    
-    print("\n客户端输出:")
-    print(stdout)
-    
-    if stderr:
-        print("客户端错误:")
-        print(stderr)
-    
-    # 停止服务器
-    print("停止服务器...")
-    server_process.terminate()
+def run_client():
+    """运行客户端示例"""
+    print("Running client demo...")
     try:
-        server_process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        server_process.kill()
-    
-    print("演示完成!")
+        # 切换到当前目录
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+        
+        # 运行客户端
+        result = subprocess.run(
+            ["python3", "client.py"],
+            capture_output=True,
+            text=True
+        )
+        
+        print("Client output:")
+        print(result.stdout)
+        if result.stderr:
+            print("Client errors:")
+            print(result.stderr)
+            
+        return result.returncode == 0
+    except Exception as e:
+        print(f"Failed to run client: {e}")
+        return False
 
+def main():
+    print("FastMCP ASCII Art Demo")
+    print("=" * 30)
+    
+    if len(sys.argv) > 1 and sys.argv[1] == "client":
+        # 运行客户端
+        run_client()
+    else:
+        # 默认运行服务器
+        server_process = run_server()
+        if server_process:
+            try:
+                # 等待用户中断
+                server_process.wait()
+            except KeyboardInterrupt:
+                print("\nShutting down server...")
+                server_process.terminate()
+                server_process.wait()
+                print("Server stopped.")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
